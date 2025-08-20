@@ -1,0 +1,418 @@
+import React, { useState, useEffect } from 'react';
+import { Calculator, Building, FileText, Users, DollarSign, CheckCircle } from 'lucide-react';
+
+const AccountingCalculator = () => {
+  const [formData, setFormData] = useState({
+    companyType: '',
+    employeeCount: '',
+    revenue: '',
+    services: [],
+    taxSystem: '',
+    documentFlow: '',
+    reportingComplexity: '',
+    additionalServices: []
+  });
+
+  const [totalCost, setTotalCost] = useState(0);
+  const [breakdown, setBreakdown] = useState({});
+  const [showResults, setShowResults] = useState(false);
+
+  // Базовые тарифы для разных услуг
+  const basePrices = {
+    bookkeeping: {
+      small: 15000,
+      medium: 35000,
+      large: 60000
+    },
+    taxReporting: {
+      simple: 8000,
+      medium: 18000,
+      complex: 35000
+    },
+    payroll: {
+      perEmployee: 500,
+      minimum: 5000
+    },
+    consulting: 3000,
+    audit: 25000,
+    legal: 5000
+  };
+
+  // Коэффициенты сложности
+  const complexityMultipliers = {
+    taxSystem: {
+      'упрощенная': 1.0,
+      'осн': 1.5,
+      'енвд': 0.8,
+      'патент': 0.6
+    },
+    documentFlow: {
+      'низкий': 1.0,
+      'средний': 1.3,
+      'высокий': 1.8
+    }
+  };
+
+  const handleInputChange = (field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleServiceChange = (service, checked) => {
+    setFormData(prev => ({
+      ...prev,
+      services: checked 
+        ? [...prev.services, service]
+        : prev.services.filter(s => s !== service)
+    }));
+  };
+
+  const handleAdditionalServiceChange = (service, checked) => {
+    setFormData(prev => ({
+      ...prev,
+      additionalServices: checked 
+        ? [...prev.additionalServices, service]
+        : prev.additionalServices.filter(s => s !== service)
+    }));
+  };
+
+  const calculateCost = () => {
+    let cost = 0;
+    let costBreakdown = {};
+
+    // Определение размера бизнеса
+    const getBusinessSize = () => {
+      const employees = parseInt(formData.employeeCount) || 0;
+      const revenue = parseInt(formData.revenue) || 0;
+      
+      if (employees <= 15 && revenue <= 60000000) return 'small';
+      if (employees <= 100 && revenue <= 400000000) return 'medium';
+      return 'large';
+    };
+
+    const businessSize = getBusinessSize();
+
+    // Базовая стоимость ведения учета
+    if (formData.services.includes('ведение-учета')) {
+      const baseCost = basePrices.bookkeeping[businessSize];
+      const taxMultiplier = complexityMultipliers.taxSystem[formData.taxSystem] || 1;
+      const docMultiplier = complexityMultipliers.documentFlow[formData.documentFlow] || 1;
+      
+      const bookkeepingCost = baseCost * taxMultiplier * docMultiplier;
+      cost += bookkeepingCost;
+      costBreakdown['Ведение бухгалтерского учета'] = bookkeepingCost;
+    }
+
+    // Налоговая отчетность
+    if (formData.services.includes('налоговая-отчетность')) {
+      let reportingCost;
+      switch(formData.reportingComplexity) {
+        case 'простая':
+          reportingCost = basePrices.taxReporting.simple;
+          break;
+        case 'средняя':
+          reportingCost = basePrices.taxReporting.medium;
+          break;
+        case 'сложная':
+          reportingCost = basePrices.taxReporting.complex;
+          break;
+        default:
+          reportingCost = basePrices.taxReporting.simple;
+      }
+      cost += reportingCost;
+      costBreakdown['Налоговая отчетность'] = reportingCost;
+    }
+
+    // Расчет зарплаты
+    if (formData.services.includes('расчет-зп')) {
+      const employees = parseInt(formData.employeeCount) || 0;
+      const payrollCost = Math.max(
+        employees * basePrices.payroll.perEmployee,
+        basePrices.payroll.minimum
+      );
+      cost += payrollCost;
+      costBreakdown['Расчет заработной платы'] = payrollCost;
+    }
+
+    // Дополнительные услуги
+    formData.additionalServices.forEach(service => {
+      switch(service) {
+        case 'консультации':
+          cost += basePrices.consulting;
+          costBreakdown['Консультационные услуги'] = basePrices.consulting;
+          break;
+        case 'аудит':
+          cost += basePrices.audit;
+          costBreakdown['Аудиторские услуги'] = basePrices.audit;
+          break;
+        case 'юридические':
+          cost += basePrices.legal;
+          costBreakdown['Юридические услуги'] = basePrices.legal;
+          break;
+      }
+    });
+
+    setTotalCost(cost);
+    setBreakdown(costBreakdown);
+    setShowResults(true);
+  };
+
+  const resetForm = () => {
+    setFormData({
+      companyType: '',
+      employeeCount: '',
+      revenue: '',
+      services: [],
+      taxSystem: '',
+      documentFlow: '',
+      reportingComplexity: '',
+      additionalServices: []
+    });
+    setShowResults(false);
+    setTotalCost(0);
+    setBreakdown({});
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto p-6 bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+      <div className="bg-white rounded-2xl shadow-xl p-8">
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-center mb-4">
+            <Calculator className="w-12 h-12 text-indigo-600 mr-3" />
+            <h1 className="text-3xl font-bold text-gray-800">Калькулятор бухгалтерских услуг</h1>
+          </div>
+          <p className="text-gray-600">Рассчитайте стоимость бухгалтерских и налоговых услуг для вашего бизнеса</p>
+        </div>
+
+        {!showResults ? (
+          <div className="space-y-8">
+            {/* Общая информация о компании */}
+            <div className="bg-gray-50 rounded-xl p-6">
+              <h2 className="text-xl font-semibold mb-4 flex items-center">
+                <Building className="w-5 h-5 mr-2 text-indigo-600" />
+                Информация о компании
+              </h2>
+              
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Тип организации</label>
+                  <select
+                    value={formData.companyType}
+                    onChange={(e) => handleInputChange('companyType', e.target.value)}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  >
+                    <option value="">Выберите тип</option>
+                    <option value="ооо">ООО</option>
+                    <option value="ао">АО</option>
+                    <option value="ип">ИП</option>
+                    <option value="пао">ПАО</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Количество сотрудников</label>
+                  <input
+                    type="number"
+                    value={formData.employeeCount}
+                    onChange={(e) => handleInputChange('employeeCount', e.target.value)}
+                    placeholder="Введите количество"
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Годовой оборот (руб.)</label>
+                  <input
+                    type="number"
+                    value={formData.revenue}
+                    onChange={(e) => handleInputChange('revenue', e.target.value)}
+                    placeholder="Введите сумму"
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Система налогообложения</label>
+                  <select
+                    value={formData.taxSystem}
+                    onChange={(e) => handleInputChange('taxSystem', e.target.value)}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  >
+                    <option value="">Выберите систему</option>
+                    <option value="упрощенная">УСН (упрощенная)</option>
+                    <option value="осн">ОСН (общая)</option>
+                    <option value="енвд">ЕНВД</option>
+                    <option value="патент">Патент</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Основные услуги */}
+            <div className="bg-gray-50 rounded-xl p-6">
+              <h2 className="text-xl font-semibold mb-4 flex items-center">
+                <FileText className="w-5 h-5 mr-2 text-indigo-600" />
+                Необходимые услуги
+              </h2>
+
+              <div className="space-y-3">
+                {[
+                  { id: 'ведение-учета', label: 'Ведение бухгалтерского учета', desc: 'Полное ведение учета операций' },
+                  { id: 'налоговая-отчетность', label: 'Налоговая отчетность', desc: 'Подготовка и сдача отчетов' },
+                  { id: 'расчет-зп', label: 'Расчет заработной платы', desc: 'Начисление зарплаты и взносов' }
+                ].map((service) => (
+                  <label key={service.id} className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-white cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.services.includes(service.id)}
+                      onChange={(e) => handleServiceChange(service.id, e.target.checked)}
+                      className="w-5 h-5 text-indigo-600 rounded mr-3"
+                    />
+                    <div>
+                      <div className="font-medium">{service.label}</div>
+                      <div className="text-sm text-gray-600">{service.desc}</div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Дополнительные параметры */}
+            <div className="bg-gray-50 rounded-xl p-6">
+              <h2 className="text-xl font-semibold mb-4 flex items-center">
+                <Users className="w-5 h-5 mr-2 text-indigo-600" />
+                Дополнительные параметры
+              </h2>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Объем документооборота</label>
+                  <select
+                    value={formData.documentFlow}
+                    onChange={(e) => handleInputChange('documentFlow', e.target.value)}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  >
+                    <option value="">Выберите объем</option>
+                    <option value="низкий">Низкий (до 50 док./мес.)</option>
+                    <option value="средний">Средний (50-200 док./мес.)</option>
+                    <option value="высокий">Высокий (200+ док./мес.)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Сложность отчетности</label>
+                  <select
+                    value={formData.reportingComplexity}
+                    onChange={(e) => handleInputChange('reportingComplexity', e.target.value)}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  >
+                    <option value="">Выберите сложность</option>
+                    <option value="простая">Простая</option>
+                    <option value="средняя">Средняя</option>
+                    <option value="сложная">Сложная</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Дополнительные услуги */}
+            <div className="bg-gray-50 rounded-xl p-6">
+              <h2 className="text-xl font-semibold mb-4 flex items-center">
+                <DollarSign className="w-5 h-5 mr-2 text-indigo-600" />
+                Дополнительные услуги
+              </h2>
+
+              <div className="space-y-3">
+                {[
+                  { id: 'консультации', label: 'Консультационные услуги', desc: 'Консультации по учету и налогам' },
+                  { id: 'аудит', label: 'Аудиторские услуги', desc: 'Внешний аудит отчетности' },
+                  { id: 'юридические', label: 'Юридическое сопровождение', desc: 'Правовая поддержка бизнеса' }
+                ].map((service) => (
+                  <label key={service.id} className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-white cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.additionalServices.includes(service.id)}
+                      onChange={(e) => handleAdditionalServiceChange(service.id, e.target.checked)}
+                      className="w-5 h-5 text-indigo-600 rounded mr-3"
+                    />
+                    <div>
+                      <div className="font-medium">{service.label}</div>
+                      <div className="text-sm text-gray-600">{service.desc}</div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <button
+              onClick={calculateCost}
+              className="w-full bg-indigo-600 text-white py-4 px-6 rounded-lg text-lg font-semibold hover:bg-indigo-700 transition-colors flex items-center justify-center"
+            >
+              <Calculator className="w-5 h-5 mr-2" />
+              Рассчитать стоимость
+            </button>
+          </div>
+        ) : (
+          // Результаты расчета
+          <div className="space-y-6">
+            <div className="text-center">
+              <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+              <h2 className="text-2xl font-bold text-gray-800 mb-2">Расчет завершен</h2>
+              <p className="text-gray-600">Ориентировочная стоимость услуг в месяц</p>
+            </div>
+
+            <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl p-8 text-center">
+              <div className="text-4xl font-bold mb-2">
+                {totalCost.toLocaleString('ru-RU')} ₽
+              </div>
+              <div className="text-xl opacity-90">в месяц</div>
+            </div>
+
+            <div className="bg-gray-50 rounded-xl p-6">
+              <h3 className="text-xl font-semibold mb-4">Детализация расчета:</h3>
+              <div className="space-y-3">
+                {Object.entries(breakdown).map(([service, cost]) => (
+                  <div key={service} className="flex justify-between items-center py-2 border-b border-gray-200 last:border-b-0">
+                    <span className="font-medium">{service}</span>
+                    <span className="text-indigo-600 font-semibold">
+                      {cost.toLocaleString('ru-RU')} ₽
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+              <h4 className="font-semibold text-blue-800 mb-2">Важная информация:</h4>
+              <ul className="text-blue-700 text-sm space-y-1">
+                <li>• Расчет является ориентировочным и может изменяться</li>
+                <li>• Итоговая стоимость зависит от специфики вашего бизнеса</li>
+                <li>• Возможны скидки при долгосрочном сотрудничестве</li>
+                <li>• Для точного расчета рекомендуется консультация специалиста</li>
+              </ul>
+            </div>
+
+            <div className="flex space-x-4">
+              <button
+                onClick={resetForm}
+                className="flex-1 bg-gray-500 text-white py-3 px-6 rounded-lg font-semibold hover:bg-gray-600 transition-colors"
+              >
+                Новый расчет
+              </button>
+              <button
+                onClick={() => window.print()}
+                className="flex-1 bg-indigo-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-indigo-700 transition-colors"
+              >
+                Распечатать
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default AccountingCalculator;
