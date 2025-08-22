@@ -172,13 +172,13 @@
               const bankMultiplier = bankOperationsMultipliers[formData.bankPaymentsCount] || 1;
               
               let additionalCost = 0;
-              if (formData.hasAdvancePayments) additionalCost += 3000;
-              if (formData.hasCashOperations) additionalCost += 2000;
-              if (formData.hasInventory) additionalCost += 4000;
-              if (formData.hasFixedAssets) additionalCost += 3500;
-              if (formData.hasTransport) additionalCost += 2500;
-              if (formData.hasLandProperty) additionalCost += 2000;
-              if (formData.hasCreditsLeasing) additionalCost += 3000;
+              if (formData.hasAdvancePayments) additionalCost += 1500;
+              if (formData.hasCashOperations) additionalCost += 1000;
+              if (formData.hasInventory) additionalCost += 2000;
+              if (formData.hasFixedAssets) additionalCost += 1750;
+              if (formData.hasTransport) additionalCost += 1250;
+              if (formData.hasLandProperty) additionalCost += 1000;
+              if (formData.hasCreditsLeasing) additionalCost += 1500;
               
               const bookkeepingCost = (baseCost * taxMultiplier * docMultiplier * businessMultiplier * operationsMultiplier * bankMultiplier) + additionalCost;
               cost += bookkeepingCost;
@@ -653,4 +653,5 @@
     </script>
 </body>
 </html>
+
 
