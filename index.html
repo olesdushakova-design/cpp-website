@@ -24,9 +24,9 @@
     <div id="root"></div>
     
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState } = React;
 
-        // Простые иконки вместо lucide-react
+        // SVG иконки
         const Calculator = () => <svg className="lucide" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="16" y1="10" x2="8" y2="10"/><line x1="8" y1="14" x2="10" y2="14"/><line x1="14" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="10" y2="18"/><line x1="14" y1="18" x2="16" y2="18"/></svg>;
         const Building = () => <svg className="lucide" viewBox="0 0 24 24"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12h12"/><path d="M6 8h12"/><path d="M6 16h12"/></svg>;
         const FileText = () => <svg className="lucide" viewBox="0 0 24 24"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/></svg>;
@@ -39,10 +39,20 @@
             companyType: '',
             employeeCount: '',
             revenue: '',
+            businessType: '',
             services: [],
             taxSystem: '',
             documentFlow: '',
             reportingComplexity: '',
+            operationsCount: '',
+            hasAdvancePayments: false,
+            hasCashOperations: false,
+            hasInventory: false,
+            hasFixedAssets: false,
+            hasTransport: false,
+            hasLandProperty: false,
+            hasCreditsLeasing: false,
+            bankPaymentsCount: '',
             additionalServices: []
           });
 
@@ -50,7 +60,7 @@
           const [breakdown, setBreakdown] = useState({});
           const [showResults, setShowResults] = useState(false);
 
-          // Базовые тарифы для разных услуг
+          // Базовые тарифы
           const basePrices = {
             bookkeeping: {
               small: 15000,
@@ -69,6 +79,32 @@
             consulting: 3000,
             audit: 25000,
             legal: 5000
+          };
+
+          // Коэффициенты по видам деятельности
+          const businessTypeMultipliers = {
+            'услуги': 1.0,
+            'торговля': 1.3,
+            'производство': 1.8,
+            'строительство': 1.6,
+            'общепит': 1.4,
+            'смешанная': 1.5
+          };
+
+          // Коэффициенты по операциям
+          const operationsMultipliers = {
+            'до-50': 1.0,
+            '50-200': 1.2,
+            '200-500': 1.5,
+            'более-500': 2.0
+          };
+
+          // Коэффициенты банковских операций
+          const bankOperationsMultipliers = {
+            'до-20': 1.0,
+            '20-50': 1.1,
+            '50-100': 1.3,
+            'более-100': 1.6
           };
 
           // Коэффициенты сложности
@@ -115,7 +151,6 @@
             let cost = 0;
             let costBreakdown = {};
 
-            // Определение размера бизнеса
             const getBusinessSize = () => {
               const employees = parseInt(formData.employeeCount) || 0;
               const revenue = parseInt(formData.revenue) || 0;
@@ -127,18 +162,29 @@
 
             const businessSize = getBusinessSize();
 
-            // Базовая стоимость ведения учета
             if (formData.services.includes('ведение-учета')) {
-              const baseCost = basePrices.bookkeeping[businessSize];
+              let baseCost = basePrices.bookkeeping[businessSize];
+              
               const taxMultiplier = complexityMultipliers.taxSystem[formData.taxSystem] || 1;
               const docMultiplier = complexityMultipliers.documentFlow[formData.documentFlow] || 1;
+              const businessMultiplier = businessTypeMultipliers[formData.businessType] || 1;
+              const operationsMultiplier = operationsMultipliers[formData.operationsCount] || 1;
+              const bankMultiplier = bankOperationsMultipliers[formData.bankPaymentsCount] || 1;
               
-              const bookkeepingCost = baseCost * taxMultiplier * docMultiplier;
+              let additionalCost = 0;
+              if (formData.hasAdvancePayments) additionalCost += 3000;
+              if (formData.hasCashOperations) additionalCost += 2000;
+              if (formData.hasInventory) additionalCost += 4000;
+              if (formData.hasFixedAssets) additionalCost += 3500;
+              if (formData.hasTransport) additionalCost += 2500;
+              if (formData.hasLandProperty) additionalCost += 2000;
+              if (formData.hasCreditsLeasing) additionalCost += 3000;
+              
+              const bookkeepingCost = (baseCost * taxMultiplier * docMultiplier * businessMultiplier * operationsMultiplier * bankMultiplier) + additionalCost;
               cost += bookkeepingCost;
               costBreakdown['Ведение бухгалтерского учета'] = bookkeepingCost;
             }
 
-            // Налоговая отчетность
             if (formData.services.includes('налоговая-отчетность')) {
               let reportingCost;
               switch(formData.reportingComplexity) {
@@ -158,7 +204,6 @@
               costBreakdown['Налоговая отчетность'] = reportingCost;
             }
 
-            // Расчет зарплаты
             if (formData.services.includes('расчет-зп')) {
               const employees = parseInt(formData.employeeCount) || 0;
               const payrollCost = Math.max(
@@ -169,7 +214,6 @@
               costBreakdown['Расчет заработной платы'] = payrollCost;
             }
 
-            // Дополнительные услуги
             formData.additionalServices.forEach(service => {
               switch(service) {
                 case 'консультации':
@@ -197,10 +241,20 @@
               companyType: '',
               employeeCount: '',
               revenue: '',
+              businessType: '',
               services: [],
               taxSystem: '',
               documentFlow: '',
               reportingComplexity: '',
+              operationsCount: '',
+              hasAdvancePayments: false,
+              hasCashOperations: false,
+              hasInventory: false,
+              hasFixedAssets: false,
+              hasTransport: false,
+              hasLandProperty: false,
+              hasCreditsLeasing: false,
+              bankPaymentsCount: '',
               additionalServices: []
             });
             setShowResults(false);
@@ -226,7 +280,7 @@
 
                 {!showResults ? (
                   <div className="space-y-8">
-                    {/* Общая информация о компании */}
+                    {/* Информация о компании */}
                     <div className="bg-gray-50 rounded-xl p-6">
                       <h2 className="text-xl font-semibold mb-4 flex items-center">
                         <Building className="w-5 h-5 mr-2 text-indigo-600" />
@@ -272,6 +326,23 @@
                         </div>
 
                         <div>
+                          <label className="block text-sm font-medium mb-2">Вид деятельности</label>
+                          <select
+                            value={formData.businessType}
+                            onChange={(e) => handleInputChange('businessType', e.target.value)}
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                          >
+                            <option value="">Выберите вид деятельности</option>
+                            <option value="услуги">Оказание услуг</option>
+                            <option value="торговля">Торговля (розница/опт)</option>
+                            <option value="производство">Производство</option>
+                            <option value="строительство">Строительство</option>
+                            <option value="общепит">Общественное питание</option>
+                            <option value="смешанная">Смешанная деятельность</option>
+                          </select>
+                        </div>
+
+                        <div>
                           <label className="block text-sm font-medium mb-2">Система налогообложения</label>
                           <select
                             value={formData.taxSystem}
@@ -288,7 +359,136 @@
                       </div>
                     </div>
 
-                    {/* Основные услуги */}
+                    {/* Объем операций */}
+                    <div className="bg-gray-50 rounded-xl p-6">
+                      <h2 className="text-xl font-semibold mb-4 flex items-center">
+                        <FileText className="w-5 h-5 mr-2 text-indigo-600" />
+                        Объем операций
+                      </h2>
+                      
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium mb-2">Количество операций в месяц</label>
+                          <select
+                            value={formData.operationsCount}
+                            onChange={(e) => handleInputChange('operationsCount', e.target.value)}
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                          >
+                            <option value="">Выберите объем</option>
+                            <option value="до-50">До 50 операций</option>
+                            <option value="50-200">50-200 операций</option>
+                            <option value="200-500">200-500 операций</option>
+                            <option value="более-500">Более 500 операций</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium mb-2">Объем документооборота</label>
+                          <select
+                            value={formData.documentFlow}
+                            onChange={(e) => handleInputChange('documentFlow', e.target.value)}
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                          >
+                            <option value="">Выберите объем</option>
+                            <option value="низкий">Низкий (до 50 док./мес.)</option>
+                            <option value="средний">Средний (50-200 док./мес.)</option>
+                            <option value="высокий">Высокий (200+ док./мес.)</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="mt-4">
+                        <label className="block text-sm font-medium mb-3">Дополнительные факторы сложности:</label>
+                        <div className="space-y-3">
+                          <label className="flex items-center">
+                            <input
+                              type="checkbox"
+                              checked={formData.hasAdvancePayments}
+                              onChange={(e) => handleInputChange('hasAdvancePayments', e.target.checked)}
+                              className="w-5 h-5 text-indigo-600 rounded mr-3"
+                            />
+                            <span>Авансовые платежи и предоплаты (+3000₽/мес)</span>
+                          </label>
+                          
+                          <label className="flex items-center">
+                            <input
+                              type="checkbox"
+                              checked={formData.hasCashOperations}
+                              onChange={(e) => handleInputChange('hasCashOperations', e.target.checked)}
+                              className="w-5 h-5 text-indigo-600 rounded mr-3"
+                            />
+                            <span>Наличные операции и касса (+2000₽/мес)</span>
+                          </label>
+                          
+                          <label className="flex items-center">
+                            <input
+                              type="checkbox"
+                              checked={formData.hasInventory}
+                              onChange={(e) => handleInputChange('hasInventory', e.target.checked)}
+                              className="w-5 h-5 text-indigo-600 rounded mr-3"
+                            />
+                            <span>Складской учет и товары (+4000₽/мес)</span>
+                          </label>
+                          
+                          <label className="flex items-center">
+                            <input
+                              type="checkbox"
+                              checked={formData.hasFixedAssets}
+                              onChange={(e) => handleInputChange('hasFixedAssets', e.target.checked)}
+                              className="w-5 h-5 text-indigo-600 rounded mr-3"
+                            />
+                            <span>Основные средства и имущественный налог (+3500₽/мес)</span>
+                          </label>
+                          
+                          <label className="flex items-center">
+                            <input
+                              type="checkbox"
+                              checked={formData.hasTransport}
+                              onChange={(e) => handleInputChange('hasTransport', e.target.checked)}
+                              className="w-5 h-5 text-indigo-600 rounded mr-3"
+                            />
+                            <span>Транспорт и транспортный налог (+2500₽/мес)</span>
+                          </label>
+                          
+                          <label className="flex items-center">
+                            <input
+                              type="checkbox"
+                              checked={formData.hasLandProperty}
+                              onChange={(e) => handleInputChange('hasLandProperty', e.target.checked)}
+                              className="w-5 h-5 text-indigo-600 rounded mr-3"
+                            />
+                            <span>Земельные участки и земельный налог (+2000₽/мес)</span>
+                          </label>
+                          
+                          <label className="flex items-center">
+                            <input
+                              type="checkbox"
+                              checked={formData.hasCreditsLeasing}
+                              onChange={(e) => handleInputChange('hasCreditsLeasing', e.target.checked)}
+                              className="w-5 h-5 text-indigo-600 rounded mr-3"
+                            />
+                            <span>Кредиты и лизинговые операции (+3000₽/мес)</span>
+                          </label>
+                        </div>
+                      </div>
+
+                      <div className="mt-4">
+                        <label className="block text-sm font-medium mb-2">Количество банковских операций в месяц</label>
+                        <select
+                          value={formData.bankPaymentsCount}
+                          onChange={(e) => handleInputChange('bankPaymentsCount', e.target.value)}
+                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        >
+                          <option value="">Выберите количество</option>
+                          <option value="до-20">До 20 платежей</option>
+                          <option value="20-50">20-50 платежей</option>
+                          <option value="50-100">50-100 платежей</option>
+                          <option value="более-100">Более 100 платежей</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Услуги */}
                     <div className="bg-gray-50 rounded-xl p-6">
                       <h2 className="text-xl font-semibold mb-4 flex items-center">
                         <FileText className="w-5 h-5 mr-2 text-indigo-600" />
@@ -325,20 +525,6 @@
                       </h2>
 
                       <div className="grid md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium mb-2">Объем документооборота</label>
-                          <select
-                            value={formData.documentFlow}
-                            onChange={(e) => handleInputChange('documentFlow', e.target.value)}
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                          >
-                            <option value="">Выберите объем</option>
-                            <option value="низкий">Низкий (до 50 док./мес.)</option>
-                            <option value="средний">Средний (50-200 док./мес.)</option>
-                            <option value="высокий">Высокий (200+ док./мес.)</option>
-                          </select>
-                        </div>
-
                         <div>
                           <label className="block text-sm font-medium mb-2">Сложность отчетности</label>
                           <select
